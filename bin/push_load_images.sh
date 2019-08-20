@@ -7,15 +7,37 @@ APP_CONF=$APP_HOME/conf
 APP_DATA=$APP_HOME/data
 APP_LOG=$APP_HOME/log
 APP_LOG_FILE=$APP_LOG/push_image.log
+IMAGE_LIST_TXT=$APP_CONF/image-list.txt
+IMAGE_UTILS_CONF=$APP_CONF/image-utils.conf
 
 ## make dir
 mkdir -p $APP_CONF
 mkdir -p $APP_DATA
 mkdir -p $APP_LOG
 
+## use arguments
+if [ $# -ge 1 ]; then
+    IMAGE_LIST_TXT=$APP_CONF/$1
+fi
+if [ $# -ge 2 ]; then
+    IMAGE_UTILS_CONF=$APP_CONF/$2
+fi
+echo IMAGE_LIST_TXT=$IMAGE_LIST_TXT
+echo IMAGE_UTILS_CONF=$IMAGE_UTILS_CONF
+
+## check if file existed
+if [ ! -f $IMAGE_LIST_TXT ]; then
+    echo "`date` File ${IMAGE_LIST_TXT} not existed, Exit." 2>&1 >> $APP_LOG_FILE
+    exit 1
+fi
+if [ ! -f $IMAGE_UTILS_CONF ]; then
+    echo "`date` File ${IMAGE_UTILS_CONF} not existed, Exit." 2>&1 >> $APP_LOG_FILE
+    exit 2
+fi
+
 ## read config
-chmod a+x $APP_CONF/image-utils.conf
-. $APP_CONF/image-utils.conf
+chmod a+x $IMAGE_UTILS_CONF
+. $IMAGE_UTILS_CONF
 
 ## echo config
 echo "" 2>&1 >> $APP_LOG_FILE
@@ -45,7 +67,7 @@ echo "`date` Login to docker repository..." 2>&1 >> $APP_LOG_FILE
 docker login --username "${IMAGE_DEST_USER}" ${arg_password} ${IMAGE_DEST_HOST}
 
 ## read image list
-images_list=`cat $APP_CONF/image-list.txt`
+images_list=`cat ${IMAGE_LIST_TXT}`
 
 ## loop for images in list
 COUNT=0
@@ -53,12 +75,13 @@ echo "`date` Start to load and push docker images..." 2>&1 >> $APP_LOG_FILE
 for image in $images_list; do
     ## define variable
 	image_dest_version=${image}:${IMAGE_DEST_VERSION}
-	if [ -n `echo ${image} | grep ":"` ]; then
-	    image_dest_version=${image}
+	if [ -n `echo ${image} | awk -F: '{print $2}'` ]; then
+		image_dest_version=${image}
 	fi
 	image_dest=${IMAGE_DEST_HOST}/${IMAGE_DEST_PROJECT}/${image_dest_version}
 	image_tar=${APP_DATA}/${image_dest_version}.tar
-
+	echo image_dest=$image_dest
+	
 	## docker push/retag/save
     echo "`date` Docker load image [${image}: ${image_tar}]." 2>&1 >> $APP_LOG_FILE
 	docker load -i ${image_tar}

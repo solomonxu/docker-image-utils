@@ -7,15 +7,37 @@ APP_CONF=$APP_HOME/conf
 APP_DATA=$APP_HOME/data
 APP_LOG=$APP_HOME/log
 APP_LOG_FILE=$APP_LOG/pull_image.log
+IMAGE_LIST_TXT=$APP_CONF/image-list.txt
+IMAGE_UTILS_CONF=$APP_CONF/image-utils.conf
 
 ## make dir
 mkdir -p $APP_CONF
 mkdir -p $APP_DATA
 mkdir -p $APP_LOG
 
+## use arguments
+if [ $# -ge 1 ]; then
+    IMAGE_LIST_TXT=$APP_CONF/$1
+fi
+if [ $# -ge 2 ]; then
+    IMAGE_UTILS_CONF=$APP_CONF/$2
+fi
+echo IMAGE_LIST_TXT=$IMAGE_LIST_TXT
+echo IMAGE_UTILS_CONF=$IMAGE_UTILS_CONF
+
+## check if file existed
+if [ ! -f $IMAGE_LIST_TXT ]; then
+    echo "`date` File ${IMAGE_LIST_TXT} not existed, Exit."
+    exit 1
+fi
+if [ ! -f $IMAGE_UTILS_CONF ]; then
+    echo "`date` File ${IMAGE_UTILS_CONF} not existed, Exit."
+    exit 2
+fi
+
 ## read config
-chmod a+x $APP_CONF/image-utils.conf
-. $APP_CONF/image-utils.conf
+chmod a+x $IMAGE_UTILS_CONF
+. $IMAGE_UTILS_CONF
 
 ## echo config
 echo "" 2>&1 >> $APP_LOG_FILE
@@ -49,7 +71,7 @@ echo "`date` Ssh to remote pushing host, then make data dir." 2>&1 >> $APP_LOG_F
 ssh ${HOST_PUSH} mkdir -p ${APP_DATA}
 
 ## read image list
-images_list=`cat $APP_CONF/image-list.txt`
+images_list=`cat $IMAGE_LIST_TXT`
 
 ## loop for images in list
 COUNT=0
@@ -58,12 +80,14 @@ for image in $images_list; do
     ## define variable
 	image_source_version=${image}:${IMAGE_SOURCE_VERSION}
 	image_dest_version=${image}:${IMAGE_DEST_VERSION}
-	if [ -n `echo ${image} | grep ":"` ]; then
+	if [ -n `echo ${image} | awk -F: '{print $2}'` ]; then
 	    image_source_version=${image}
 		image_dest_version=${image}
 	fi
     image_src=${IMAGE_SOURCE_HOST}/${IMAGE_SOURCE_PROJECT}/${image_source_version}
 	image_dest=${IMAGE_DEST_HOST}/${IMAGE_DEST_PROJECT}/${image_dest_version}
+	echo image_src=$image_src
+	echo image_dest=$image_dest
 	image_tar=${APP_DATA}/${image_dest_version}.tar
 	host_dest=${HOST_PUSH}:${APP_DATA}
 	
